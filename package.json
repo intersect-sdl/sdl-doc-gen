@@ -1,0 +1,50 @@
+{
+    "name": "@sdl/doc-gen",
+    "version": "0.0.1",
+    "type": "module",
+    "main": "./dist/index.cjs.js",
+    "module": "./dist/index.es.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "import": "./dist/index.es.js",
+            "require": "./dist/index.cjs.js"
+        }
+    },
+    "scripts": {
+        "build": "vite build",
+        "test": "vitest --disable-console-intercept"
+    },
+    "dependencies": {
+        "@types/mdast": "^4.0.4",
+        "@types/node": "^22.15.19",
+        "@types/unist": "^3.0.3",
+        "fast-glob": "^3.3.3",
+        "front-matter": "^4.0.2",
+        "hastscript": "^9.0.1",
+        "mdast-util-directive": "^3.1.0",
+        "mdsvex": "^0.12.6",
+        "rehype-stringify": "^10.0.1",
+        "remark": "^15.0.1",
+        "remark-definition-list": "^2.0.0",
+        "remark-directive": "^4.0.0",
+        "remark-extract-frontmatter": "^3.2.0",
+        "remark-flexible-toc": "^1.2.0",
+        "remark-frontmatter": "^5.0.0",
+        "remark-gfm": "^4.0.1",
+        "remark-parse": "^11.0.0",
+        "remark-rehype": "^11.1.2",
+        "unified": "^11.0.5",
+        "unist-util-visit": "^5.0.0"
+    },
+    "devDependencies": {
+        "typescript": "^5.8.3",
+        "vite": "^6.3.5",
+        "vite-plugin-dts": "^4.5.4",
+        "vitest": "^3.1.3"
+    },
+  "packageManager": "pnpm@10.12.4"
+}
