@@ -19,6 +19,8 @@ import remarkGfm from 'remark-gfm';
 import remarkRehype from 'remark-rehype';
 
 import rehypeStringify from 'rehype-stringify'
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 import type { Root } from "mdast";
 
@@ -133,13 +135,8 @@ export async function parseMarkdown(filePath: string): Promise<ParsedMarkdown> {
   // Compile Markdown using mdsvex with support for directives
   const compiled = await compile(content.body, {
     extensions: [".svx", ".md"],
-    remarkPlugins: [
-      remarkDirective,
-      genericDirective,
-      remarkDefinitionList,
-      remarkGfm,
-    ],
-    rehypePlugins: [rehypeStringify, expandCodeBlockLanguagePlugin]
+    remarkPlugins: [remarkDirective, genericDirective, remarkDefinitionList, remarkGfm],
+    rehypePlugins: [rehypeStringify, rehypeSlug as any, [rehypeAutolinkHeadings as any, { behavior: "wrap" }], expandCodeBlockLanguagePlugin],
     // layout: {
     //   _: "./src/lib/layouts/DefaultLayout.svelte", // Optional
     // },
