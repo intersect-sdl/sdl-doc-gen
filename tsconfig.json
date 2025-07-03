@@ -1,12 +1,22 @@
 {
-    "extends": "../../tsconfig.json",
-    "compilerOptions": {
-        "rootDir": "src",
-        "outDir": "dist",
-        "composite": true,
-        "declaration": true
+    "ts-node": {
+        "transpileOnly": true,
+        "compilerOptions": {
+            "module": "commonjs",
+            "esModuleInterop": true,
+            "strict": true
+        },
+        "include": [
+            "tests/**/*"
+        ]
     },
-    "include": [
-        "src"
-    ]
+    "compilerOptions": {
+        "outDir": "dist/types",
+        "target": "ES2019",
+        "module": "esnext",
+        "moduleResolution": "node",
+        "forceConsistentCasingInFileNames": true,
+        "esModuleInterop": true,
+        "strict": true
+    }
 }

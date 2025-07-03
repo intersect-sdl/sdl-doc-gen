@@ -5,31 +5,37 @@
  * @import {Plugin} from 'unified'
  */
 
-import fs from "fs/promises";
-import path from "path";
-import { compile } from "mdsvex";
+import fs from "node:fs/promises";
 import { extractFrontmatter } from "./frontmatter";
+import { blockHtml } from "./html_block";
+
+import yaml from "yaml";
+import { unified } from "unified";
+import type { Processor } from "unified";
+import remarkParse from "remark-parse";
 
 import remarkFrontmatter from "remark-frontmatter";
 import remarkExtractFrontmatter from "remark-extract-frontmatter";
-import { remarkDefinitionList, defListHastHandlers } from 'remark-definition-list';
+import { remarkDefinitionList, defListHastHandlers } from "remark-definition-list";
 import remarkDirective from "remark-directive";
-import remarkGfm from 'remark-gfm';
+import remarkGfm from "remark-gfm";
+import remarkFlexibleToc from "remark-flexible-toc";
 
-import remarkRehype from 'remark-rehype';
+import remarkRehype from "remark-rehype";
 
-import rehypeStringify from 'rehype-stringify'
+import rehypeStringify from "rehype-stringify";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
-import type { Root } from "mdast";
-
+import { h } from "hastscript";
 import { visit } from "unist-util-visit";
 import type { Plugin, Settings } from "unified";
 import type { Directives } from "mdast-util-directive";
 
-export interface Post {
-  meta: PostMeta;
+import { Node } from "unist";
+
+export interface Page {
+  meta: PageMeta;
   content: string;
 }
 
@@ -46,7 +52,7 @@ export interface ParsedMarkdown {
   meta: Record<string, any>;
 }
 
-export interface PostMeta {
+export interface PageMeta {
   slug: string;
   title: string;
   description: string;
@@ -57,98 +63,102 @@ export interface PostMeta {
   toc: TocEntry[];
 }
 
-interface Options extends Settings {
-  components?: Record<string, string>; // map directive names to HTML/Svelte components
-}
+// Directive Options
+type DirectiveOptions = {
+  // Add your expected plugin options here
+  someFlag?: boolean;
+};
 
 // This plugin is an example to let users write HTML with directives.
 // It’s informative but rather useless.
 // See below for others examples.
-const genericDirective: Plugin<[Options?]> = (options: Options = {}) => {
-  //const components = options.components || {};
-
-  console.log("generic directive");
-
+const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions = {}) => {
   return (tree) => {
-    //visit(tree, ["textDirective", "leafDirective", "containerDirective"], (node: any) => {
-    visit(tree, (node: any) => {
+    visit(tree, ["textDirective", "leafDirective", "containerDirective"], (node: any) => {
       //console.log("generic directive: node.type", node.type);
       if (node.type === "containerDirective" || node.type === "leafDirective" || node.type === "textDirective") {
         const directive = node as Directives;
+        //console.log("genericDirective: ", directive);
         const name = directive.name;
-        console.log("generic directive: visitor: ", node);
-
         if (!name) return;
+        
+        const data = node.data || (node.data = {});
+        const tagName = node.type === "textDirective" ? "span" : "div";
 
-        //const component = components[name] || name;
-        node.type = "mdxJsxFlowElement";
-        //node.name = component;
-        node.attributes = Object.entries(directive.attributes || {}).map(([key, value]) => ({
-          type: "mdxJsxAttribute",
-          name: key,
-          value: value || true,
-        }));
-        node.children = directive.children || [];
+        data.hName = tagName;
+        data.hProperties = h(tagName, node.attributes || {}).properties;
+
+        if (name === "rdfterm" && node.type === "textDirective") {
+          if (directive.children.length == 2) {
+            console.log("[0]: ", directive.children[0] as Node);
+            console.log("[1]: ", directive.children[1] as Node);
+            //let tN = directive.children[0] as ;
+            const children = [
+              {
+                type: "text",
+                value: directive.children[0].value + ":" + directive.children[1].name,
+                position: { start: directive.children[0].position, end: directive.children[1].position },
+              },
+            ];
+            console.log("children: ", children);
+            node.children = children;
+          }
+        } else {
+          node.type = "mdxJsxFlowElement";
+          node.name = name;
+          node.attributes = Object.entries(directive.attributes || {}).map(([key, value]) => ({
+            type: "mdxJsxAttribute",
+            name: key,
+            value: value || true,
+          }));
+          node.children = directive.children || [];
+        }
       }
     });
   };
 };
 
-// Expands code block language short names
-function expandCodeBlockLanguagePlugin(): Transformer<Root, Root> {
-  const transform = (lang: string): string => {
-    const mappings: Record<string, string> = {
-      ts: 'typescript',
-      js: 'javascript',
-      py: 'python',
-      sh: 'bash',
-      md: 'markdown',
-      yml: 'YAML',
-      yaml: 'YAML',
-      json: 'JSON',
-      html: 'HTML',
-      css: 'CSS',
-      scss: 'SCSS',
-      toml: 'TOML',
-      cpp: 'C++',
-      cs: 'C#',
-      asm: 'assembly'
-    };
-    return mappings[lang] || lang;
-  };
+export async function parseMarkdown(content: string, filename: string) {
+  if (!filename) console.error("parseMarkdown: No Filename");
+  if (!isMarkdownFile(filename)) {
+    return;
+  }
+  const processor = unified()
+    .use(remarkParse)
+    //.use(html_parser)
+    .use(remarkFrontmatter, ["yaml"])
+    .use(remarkExtractFrontmatter, { yaml: yaml.parse })
+    .use(remarkDirective)
+    .use(genericDirective)
+    .use(remarkDefinitionList)
+    .use(remarkGfm)
+    .use(remarkFlexibleToc)
+    .use(remarkRehype, { allowDangerousHtml: true, allowDangerousCharacters: true })
+    .use(rehypeSlug)
+    .use(rehypeAutolinkHeadings, { behavior: "wrap" })
+    .use(rehypeStringify, { allowDangerousHtml: true });
 
-  return (tree) => {
-    visit(tree, ['element'], (_node) => {
-      const node = _node as unknown as Element;
-      if (!node.properties || !('data-language' in node.properties)) return;
-      node.properties['data-language'] = transform(node.properties['data-language'] as string);
-    });
+  const processed = await processor.process(content).catch((err) => {
+    console.error("Error generating docs:", err);
+    process.exit(1);
+  });
+
+  return {
+    code: String(processed),
+    data: processed.data as Record<string, unknown>,
+    map: "",
   };
 }
 
-export async function parseMarkdown(filePath: string): Promise<ParsedMarkdown> {
-  const raw = await fs.readFile(filePath, "utf-8");
-
+export async function getFrontmatter(filePath: string): Promise<Page> {
+  const document = await fs.readFile(filePath, "utf-8");
   // Extract frontmatter
-  const content = extractFrontmatter(raw);
-
-  // Compile Markdown using mdsvex with support for directives
-  const compiled = await compile(content.body, {
-    extensions: [".svx", ".md"],
-    remarkPlugins: [remarkDirective, genericDirective, remarkDefinitionList, remarkGfm],
-    rehypePlugins: [rehypeStringify, rehypeSlug as any, [rehypeAutolinkHeadings as any, { behavior: "wrap" }], expandCodeBlockLanguagePlugin],
-    // layout: {
-    //   _: "./src/lib/layouts/DefaultLayout.svelte", // Optional
-    // },
-  });
-
-  if (!compiled || typeof compiled.code !== "string") {
-    throw new Error(`Failed to compile markdown at ${filePath}`);
-  }
+  const content = extractFrontmatter(document);
+  const meta = content.attributes;
 
   return {
-    content: compiled.code,
-    meta: content.attributes,
+    content: "", //processed.toString(),
+    meta: meta as PageMeta,
   };
 }
 
