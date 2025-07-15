@@ -12,11 +12,14 @@ import { blockHtml } from "./html_block";
 import yaml from "yaml";
 import { unified } from "unified";
 import type { Processor } from "unified";
-import remarkParse from "remark-parse";
 
+
+/* Remark Plugins */
+import remarkParse from "remark-parse";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkExtractFrontmatter from "remark-extract-frontmatter";
 import { remarkDefinitionList, defListHastHandlers } from "remark-definition-list";
+import sectionize from "remark-sectionize";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkFlexibleToc from "remark-flexible-toc";
@@ -87,12 +90,11 @@ const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions
 
         data.hName = tagName;
         data.hProperties = h(tagName, node.attributes || {}).properties;
-
+        if (name === "note" && node.type === "containerDirective") {
+          data.hProperties = { className:["p-4", "gap-3", "text-sm", "bg-primary-50", "dark:bg-gray-800", "text-primary-800", "dark:text-primary-400", "rounded-lg"], role: ["alert"]}
+        }
         if (name === "rdfterm" && node.type === "textDirective") {
           if (directive.children.length == 2) {
-            console.log("[0]: ", directive.children[0] as Node);
-            console.log("[1]: ", directive.children[1] as Node);
-            //let tN = directive.children[0] as ;
             const children = [
               {
                 type: "text",
@@ -100,7 +102,6 @@ const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions
                 position: { start: directive.children[0].position, end: directive.children[1].position },
               },
             ];
-            console.log("children: ", children);
             node.children = children;
           }
         } else {
@@ -128,12 +129,13 @@ export async function parseMarkdown(content: string, filename: string) {
     //.use(html_parser)
     .use(remarkFrontmatter, ["yaml"])
     .use(remarkExtractFrontmatter, { yaml: yaml.parse })
+    .use(sectionize)
     .use(remarkDirective)
     .use(genericDirective)
     .use(remarkDefinitionList)
     .use(remarkGfm)
     .use(remarkFlexibleToc)
-    .use(remarkRehype, { allowDangerousHtml: true, allowDangerousCharacters: true })
+    .use(remarkRehype, { allowDangerousHtml: true, allowDangerousCharacters: true, handlers: { ...defListHastHandlers } })
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings, { behavior: "wrap" })
     .use(rehypeStringify, { allowDangerousHtml: true });

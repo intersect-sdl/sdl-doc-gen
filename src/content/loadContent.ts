@@ -6,8 +6,8 @@ import fs from "node:fs/promises";
 
 //let posts: ParsedMarkdown[];
 
-//const basepath = "/Users/x8q/Projects/INTERSECT/ACL";
-const basepath = "/app";
+const basepath = "/Users/x8q/Projects/INTERSECT/ACL";
+//const basepath = "/app";
 
 const basename = (path: string) => path.split("/").pop()?.split(".").shift() ?? "";
 const filePath = (path: string) => "/" + basename(path);
