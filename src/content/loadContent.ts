@@ -6,8 +6,8 @@ import fs from "node:fs/promises";
 
 //let posts: ParsedMarkdown[];
 
-const basepath = "/Users/x8q/Projects/INTERSECT/ACL";
-//const basepath = "/app";
+//const basepath = "/Users/x8q/Projects/INTERSECT/ACL";
+const basepath = "/app";
 
 const basename = (path: string) => path.split("/").pop()?.split(".").shift() ?? "";
 const filePath = (path: string) => "/" + basename(path);
@@ -52,7 +52,9 @@ export async function getEntries(path: string) {
   let posts = await Promise.all(
     iterablePostFiles.map(async (currentValue) => {
       // @todo This needs fixing
-      return { slug: currentValue[1].replace(/\.[^/.]+$/, "").slice(basepath.length + 6) };
+      const slug = currentValue[1].replace(/\.[^/.]+$/, "").slice(basepath.length + 6)
+      console.log("getEntries / slug: ", slug);
+      return { slug: slug };
     })
   );
 
@@ -70,12 +72,13 @@ export async function getSiteToc(path: string): Promise<ParsedMarkdown[]> {
 
   let posts = await Promise.all(
     iterablePostFiles.map(async (currentValue) => {
-      //console.log("getPostsInPath: ", currentValue)
+      console.log("getSiteToc: ", currentValue);
       const parsed = await getFrontmatter(currentValue[1] as string).catch((err) => {
         console.error("Error generating Toc:", err);
         process.exit(1);
       });
       parsed.meta.slug = currentValue[1].replace(/\.[^/.]+$/, "").slice(basepath.length);
+      console.log("slug: ", currentValue[1].replace(/\.[^/.]+$/, "").slice(basepath.length));
       return parsed;
     })
   );

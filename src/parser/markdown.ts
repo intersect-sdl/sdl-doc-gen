@@ -103,6 +103,8 @@ const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions
               },
             ];
             node.children = children;
+            node.type = "emphasis"
+            data.hProperties = { className: ["mr-1", "px-2", "py-1", "bg-gray-200", "rounded-lg"] };
           }
         } else {
           node.type = "mdxJsxFlowElement";

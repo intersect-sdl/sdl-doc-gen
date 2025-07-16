@@ -47,3 +47,32 @@ export interface Preprocessor {
   name: string;
   markup: (args: { content: string; filename: string }) => PreprocessorReturn;
 }
+
+export interface Page {
+  meta: PageMeta;
+  content: string;
+}
+
+export interface TocEntry {
+  value: string;
+  href: string;
+  debth: number;
+  numbering: number[];
+  parent: string;
+}
+
+export interface ParsedMarkdown {
+  content: string;
+  meta: Record<string, any>;
+}
+
+export interface PageMeta {
+  slug: string;
+  title: string;
+  description: string;
+  date: string;
+  tags: string[];
+  published: string;
+  readingTime: number;
+  toc: TocEntry[];
+}
