@@ -21,7 +21,7 @@ describe("buildUUIDIndex", () => {
     await rm(testDir, { recursive: true, force: true });
   });
 
-  it.skip("creates UUID index from Markdown and TypeScript", async () => {
+  it("creates UUID index from Markdown and TypeScript", async () => {
     const index = await buildUUIDIndex(testDir);
     
     expect(index[UUID_A]).toBeDefined();

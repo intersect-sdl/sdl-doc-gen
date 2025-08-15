@@ -97,7 +97,7 @@ const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions
 };
 
 let wikiRefOpts = {
-  resolveDocType: (fname: string) => {
+    resolveDocType: (fname: string) => {
     console.log("resolveDocType: ", fname);
   },
   resolveHtmlHref: (fname: string) => {
@@ -173,4 +173,13 @@ export async function getFrontmatter(filePath: string): Promise<Page> {
 // Support `.md` and `.svx` extensions
 export function isMarkdownFile(filename: string): boolean {
   return filename.endsWith(".md") || filename.endsWith(".svx");
+}
+
+export async function parseMarkdownWithFrontmatter(content: string): Promise<{ html: string; meta: Record<string, any> }> {
+  const { attributes, body } = extractFrontmatter(content);
+  const processed = await parseMarkdown(body);
+  return {
+    html: processed.code,
+    meta: attributes
+  };
 }

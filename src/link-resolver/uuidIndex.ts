@@ -1,9 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
-import { parseMarkdown } from "../parser/markdown";
+import { parseMarkdownWithFrontmatter, isMarkdownFile } from "../parser/markdown";
 import { parseTypeScriptDocs } from "../parser/tsdoc";
 import { parsePythonDocs } from "../parser/pydoc";
-import { isMarkdownFile } from "../parser/markdown";
 import fg from "fast-glob";
 
 export interface UUIDEntry {
@@ -24,15 +23,15 @@ export async function buildUUIDIndex(contentDir: string, outputFile?: string): P
   for (const file of files) {
     if (isMarkdownFile(file)) {
       try {
-        const parsed = await parseMarkdown(file);
-        const uuid = parsed.meta.uuid;
+        const content = await fs.readFile(file, 'utf-8');
+        const parsed = await parseMarkdownWithFrontmatter(content);
+        const uuid = parsed.meta?.uuid;
         if (uuid) {
-          console.log(file)
           index[uuid] = {
             uuid,
             filePath: file,
             type: "markdown",
-            title: parsed.meta.title || "",
+            title: parsed.meta?.title || "",
           };
         }
       } catch (err) {
@@ -40,19 +39,19 @@ export async function buildUUIDIndex(contentDir: string, outputFile?: string): P
       }
     } else if (file.endsWith(".ts")) {
       try {
-        const docs = parseTypeScriptDocs(file);
+        const docs = await parseTypeScriptDocs(file);
         for (const doc of docs) {
           if (doc.uuid) {
             index[doc.uuid] = {
               uuid: doc.uuid,
-              filePath: doc.filePath,
+              filePath: file,
               type: "typescript",
               title: doc.name,
             };
           }
         }
       } catch (err) {
-        console.warn(`Error parsing TS: ${file}`, err);
+        console.warn(`Error parsing TypeScript: ${file}`, err);
       }
     } else if (file.endsWith(".py")) {
       try {
