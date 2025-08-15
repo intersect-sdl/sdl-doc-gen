@@ -1,8 +1,10 @@
 import { parsePythonDocs } from "../../src/parser/pydoc";
 import { mkdir, writeFile, rm } from "fs/promises";
 import path from "path";
+import { fileURLToPath } from "url";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dir = path.resolve(__dirname, "temp-python");
 
 describe("parsePythonDocs", () => {

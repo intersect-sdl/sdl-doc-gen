@@ -1,8 +1,10 @@
 import { buildBacklinkIndex } from "../../src/link-resolver/backlinks";
 import { mkdir, writeFile, rm } from "fs/promises";
 import path from "path";
+import { fileURLToPath } from "url";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const testDir = path.resolve(__dirname, "temp-content");
 
 describe("buildBacklinkIndex", () => {

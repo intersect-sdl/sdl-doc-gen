@@ -92,6 +92,12 @@ export class DocGenConfig {
       return path.resolve(envPath);
     }
 
+    // Check if it's a Windows absolute path (even on non-Windows systems)
+    if (/^[A-Za-z]:(\\|\/)/i.test(pathOrEnvVar)) {
+      // Normalize Windows paths to forward slashes for consistent processing
+      return pathOrEnvVar.replace(/\\/g, '/');
+    }
+
     // Check if it's already an absolute path
     if (path.isAbsolute(pathOrEnvVar)) {
       return pathOrEnvVar;
@@ -158,16 +164,20 @@ export class DocGenConfig {
    * Convert file path to slug based on configuration
    */
   pathToSlug(filePath: string): string {
-    // Normalize the path
-    const normalizedPath = path.normalize(filePath);
+    // Normalize the path and convert backslashes to forward slashes for consistent processing
+    let normalizedPath = path.normalize(filePath).replace(/\\/g, '/');
+    const normalizedBasePath = path.normalize(this.config.basePath).replace(/\\/g, '/');
     
     // Remove file extension
     let slug = normalizedPath.replace(/\.[^/.]+$/, "");
     
     // Remove base path if present
-    if (slug.startsWith(this.config.basePath)) {
-      slug = slug.slice(this.config.basePath.length);
+    if (slug.startsWith(normalizedBasePath)) {
+      slug = slug.slice(normalizedBasePath.length);
     }
+    
+    // Remove Windows drive letter if present (e.g., "/C:" becomes "")
+    slug = slug.replace(/^\/[A-Za-z]:/, '');
     
     // Remove configured prefixes
     for (const prefix of this.config.slugPrefixes) {
@@ -181,9 +191,6 @@ export class DocGenConfig {
     if (!slug.startsWith('/')) {
       slug = '/' + slug;
     }
-    
-    // Convert backslashes to forward slashes (Windows compatibility)
-    slug = slug.replace(/\\/g, '/');
     
     return slug;
   }

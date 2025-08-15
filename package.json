@@ -17,8 +17,7 @@
     "types": "./dist/main.d.ts",
     "scripts": {
         "build": "rollup -c",
-        "test": "vitest --disable-console-intercept --silent=false",
-        "test:config": "node --loader @rollup/plugin-sucrase/dist/index.js test-config.js"
+        "test": "vitest --disable-console-intercept --silent=false"
     },
     "files": [
         "dist/*",
