@@ -107,8 +107,8 @@ Documentation for Platform B with MDX support.`
       const entries = await getEntries(path.join(testDir, 'docs'), customConfig);
       
       expect(entries).toHaveLength(2);
-      expect(entries.map(e => e.slug)).toContain('/getting-started');
-      expect(entries.map(e => e.slug)).toContain('/advanced');
+      expect(entries.map(e => e.slug)).toContain('getting-started');
+      expect(entries.map(e => e.slug)).toContain('advanced');
     });
 
     it('should respect fileExtensions configuration', async () => {
@@ -121,7 +121,7 @@ Documentation for Platform B with MDX support.`
       const entries = await getEntries(path.join(testDir, 'platforms'), customConfig);
       
       expect(entries).toHaveLength(1);
-      expect(entries[0].slug).toBe('/platform-a');
+      expect(entries[0].slug).toBe('platform-a');
     });
 
     it('should include both md and mdx files when configured', async () => {
@@ -134,8 +134,8 @@ Documentation for Platform B with MDX support.`
       const entries = await getEntries(path.join(testDir, 'platforms'), customConfig);
       
       expect(entries).toHaveLength(2);
-      expect(entries.map(e => e.slug)).toContain('/platform-a');
-      expect(entries.map(e => e.slug)).toContain('/platform-b');
+      expect(entries.map(e => e.slug)).toContain('platform-a');
+      expect(entries.map(e => e.slug)).toContain('platform-b');
     });
   });
 
@@ -161,8 +161,8 @@ Documentation for Platform B with MDX support.`
       
       // Check that slugs are generated correctly
       const slugs = toc.map(item => item.meta.slug);
-      expect(slugs).toContain('/getting-started');
-      expect(slugs).toContain('/advanced');
+      expect(slugs).toContain('getting-started');
+      expect(slugs).toContain('advanced');
     });
 
     it('should parse frontmatter correctly', async () => {
@@ -205,7 +205,7 @@ Documentation for Platform B with MDX support.`
       
       expect(entries).toHaveLength(2);
       // Slugs should be generated relative to PROJECT_ROOT
-      expect(entries.map(e => e.slug)).toContain('/getting-started');
+      expect(entries.map(e => e.slug)).toContain('getting-started');
     });
 
     it('should override environment variables with explicit config', async () => {
@@ -219,7 +219,7 @@ Documentation for Platform B with MDX support.`
       const entries = await getEntries(path.join(testDir, 'docs'), customConfig);
       
       expect(entries).toHaveLength(2);
-      expect(entries.map(e => e.slug)).toContain('/getting-started');
+      expect(entries.map(e => e.slug)).toContain('getting-started');
     });
   });
 
@@ -260,7 +260,7 @@ A nested tutorial.`
 
       const entries = await getEntries(path.join(testDir, 'docs'), customConfig);
       
-      expect(entries.some(e => e.slug === '/guides/tutorial')).toBe(true);
+      expect(entries.some(e => e.slug === 'guides/tutorial')).toBe(true);
       
       // Clean up
       await rm(path.join(testDir, 'docs', 'guides'), { recursive: true });

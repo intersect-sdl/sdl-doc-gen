@@ -187,11 +187,6 @@ export class DocGenConfig {
       }
     }
     
-    // Ensure slug starts with /
-    if (!slug.startsWith('/')) {
-      slug = '/' + slug;
-    }
-    
     return slug;
   }
 

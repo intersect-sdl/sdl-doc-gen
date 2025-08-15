@@ -115,11 +115,11 @@ describe('DocGenConfig', () => {
       const testCases = [
         {
           input: '/project/root/docs/getting-started.md',
-          expected: '/getting-started'
+          expected: 'getting-started'
         },
         {
           input: '/project/root/guides/advanced-usage.md',
-          expected: '/advanced-usage'
+          expected: 'advanced-usage'
         },
         {
           input: '/other/path/file.md',
@@ -141,7 +141,7 @@ describe('DocGenConfig', () => {
       const windowsPath = 'C:\\project\\root\\docs\\guide.md';
       const slug = config.pathToSlug(windowsPath);
       
-      expect(slug).toBe('/guide');
+      expect(slug).toBe('guide');
       expect(slug).not.toContain('\\');
     });
 
@@ -152,7 +152,7 @@ describe('DocGenConfig', () => {
       });
       
       const slug = config.pathToSlug('/project/root/docs/guides/tutorial.md');
-      expect(slug).toBe('/guides/tutorial');
+      expect(slug).toBe('guides/tutorial');
     });
   });
 
