@@ -1,20 +1,17 @@
 import fg from "fast-glob";
 import { parseMarkdown, getFrontmatter } from "../parser/markdown";
-import type { ParsedMarkdown, Page, PageMeta } from "../parser/markdown";
+import type { ParsedMarkdown, Page, PageMeta, PathConfig } from "../types";
+import { getConfig } from "../config/config";
 
 import fs from "node:fs/promises";
 
-//let posts: ParsedMarkdown[];
-
-//const basepath = "/Users/x8q/Projects/INTERSECT/ACL";
-const basepath = "/app";
-
-const basename = (path: string) => path.split("/").pop()?.split(".").shift() ?? "";
-const filePath = (path: string) => "/" + basename(path);
-
-async function getPostsInPath(docpath: string): Promise<ParsedMarkdown[]> {
+async function getPostsInPath(docpath: string, pathConfig?: PathConfig): Promise<ParsedMarkdown[]> {
   console.log("getPostInPath: ", docpath);
-  const files = await fg(["**/*.md"], {
+  
+  const config = getConfig(pathConfig);
+  const filePatterns = config.getFilePatterns();
+  
+  const files = await fg(filePatterns, {
     cwd: docpath,
     absolute: true,
   });
@@ -25,7 +22,7 @@ async function getPostsInPath(docpath: string): Promise<ParsedMarkdown[]> {
     iterablePostFiles.map(async (currentValue) => {
       console.log("getPostsInPath: ", currentValue);
       const file = await fs.readFile(currentValue[1], "utf-8");
-      const parsed = await parseMarkdown(file, currentValue[1] as string).catch((err) => {
+      const parsed = await parseMarkdown(currentValue[1] as string).catch((err) => {
         console.error("Error generating docs:", err);
         process.exit(1);
       });
@@ -40,10 +37,12 @@ async function getPostsInPath(docpath: string): Promise<ParsedMarkdown[]> {
   return posts;
 }
 
-export async function getEntries(path: string) {
-  //if (!posts) {
-  const files = await fg(["**/*.md"], {
-    cwd: path,
+export async function getEntries(contentPath: string, pathConfig?: PathConfig) {
+  const config = getConfig(pathConfig);
+  const filePatterns = config.getFilePatterns();
+  
+  const files = await fg(filePatterns, {
+    cwd: contentPath,
     absolute: true,
   });
 
@@ -51,9 +50,9 @@ export async function getEntries(path: string) {
 
   let posts = await Promise.all(
     iterablePostFiles.map(async (currentValue) => {
-      // @todo This needs fixing
-      const slug = currentValue[1].replace(/\.[^/.]+$/, "").slice(basepath.length + 6)
-      console.log("getEntries / slug: ", slug);
+      // Use configuration to generate slug
+      const slug = config.pathToSlug(currentValue[1]);
+
       return { slug: slug };
     })
   );
@@ -61,10 +60,12 @@ export async function getEntries(path: string) {
   return posts;
 }
 
-export async function getSiteToc(path: string): Promise<ParsedMarkdown[]> {
-  //if (!posts) {
-  const files = await fg(["**/*.md"], {
-    cwd: path,
+export async function getSiteToc(contentPath: string, pathConfig?: PathConfig): Promise<ParsedMarkdown[]> {
+  const config = getConfig(pathConfig);
+  const filePatterns = config.getFilePatterns();
+  
+  const files = await fg(filePatterns, {
+    cwd: contentPath,
     absolute: true,
   });
 
@@ -72,35 +73,33 @@ export async function getSiteToc(path: string): Promise<ParsedMarkdown[]> {
 
   let posts = await Promise.all(
     iterablePostFiles.map(async (currentValue) => {
-      console.log("getSiteToc: ", currentValue);
       const parsed = await getFrontmatter(currentValue[1] as string).catch((err) => {
         console.error("Error generating Toc:", err);
         process.exit(1);
       });
-      parsed.meta.slug = currentValue[1].replace(/\.[^/.]+$/, "").slice(basepath.length);
-      console.log("slug: ", currentValue[1].replace(/\.[^/.]+$/, "").slice(basepath.length));
+      
+      // Use configuration to generate slug
+      parsed.meta.slug = config.pathToSlug(currentValue[1]);
       return parsed;
     })
   );
-  //}
-
+  
   return posts;
 }
 
-export async function getAllSites(path: string): Promise<ParsedMarkdown[]> {
-  return await getPostsInPath(path);
+export async function getAllSites(path: string, pathConfig?: PathConfig): Promise<ParsedMarkdown[]> {
+  return await getPostsInPath(path, pathConfig);
 }
 
 export async function getPageBySlug(contentroot: string, slug: string) {
-  console.log("getPageBySlug: ", contentroot, slug);
   const _path = contentroot + slug + ".md";
   const content = await fs.readFile(_path, "utf-8");
-  const post = await parseMarkdown(content, _path);
+  const post = await parseMarkdown(content);
   if (post) {
     //post.meta.slug = slug;
     return {
       content: post ? (post.code as string) : "", //processed.toString(),
-      meta: post.data as PageMeta,
-    } as Page;
+      meta: post.data,
+    };
   }
 }

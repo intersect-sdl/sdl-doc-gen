@@ -1,6 +1,36 @@
 import type { Node } from "unist";
 import type { Plugin, Settings } from "unified";
 
+export interface PathConfig {
+  /**
+   * Base path for the project root. Used for slug generation.
+   * Can be absolute path or environment variable name.
+   * 
+   * Examples:
+   * - "/Users/user/Projects/MyProject"
+   * - "PROJECT_ROOT" (will read from process.env.PROJECT_ROOT)
+   */
+  basePath?: string;
+  
+  /**
+   * Content root directories relative to basePath or absolute paths.
+   * Default: ["docs", "platforms"]
+   */
+  contentRoots?: string[];
+  
+  /**
+   * Path prefixes to remove from slugs.
+   * Default: ["/docs/", "/platforms/"]
+   */
+  slugPrefixes?: string[];
+  
+  /**
+   * File extensions to process.
+   * Default: ["md", "mdx"]
+   */
+  fileExtensions?: string[];
+}
+
 export interface DocGenOptions {
   /**
    * **remarkPlugins** - an array with each element being either a {@link https://github.com/remarkjs/remark/blob/HEAD/doc/plugins.md#list-of-plugins remark plugin} or a tuple of `plugin` and `pluginOptions`. Default: `[ ]`. {@link https://mdsvex.com/docs#remarkplugins--rehypeplugins More details.}
@@ -32,6 +62,11 @@ export interface DocGenOptions {
    * ```
    */
   rehypePlugins?: Array<[Plugin, Settings] | Plugin>;
+  
+  /**
+   * Path configuration for content discovery and processing.
+   */
+  paths?: PathConfig;
 }
 
 export type PreprocessorReturn = Promise<

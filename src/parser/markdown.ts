@@ -6,13 +6,16 @@
  */
 
 import fs from "node:fs/promises";
+import path from "path";
 import { extractFrontmatter } from "./frontmatter";
-import { blockHtml } from "./html_block";
 
 import yaml from "yaml";
 import { unified } from "unified";
-import type { Processor } from "unified";
 
+import { h } from "hastscript";
+import { visit } from "unist-util-visit";
+import type { Plugin } from "unified";
+import type { Directives } from "mdast-util-directive";
 
 /* Remark Plugins */
 import remarkParse from "remark-parse";
@@ -23,6 +26,9 @@ import sectionize from "remark-sectionize";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkFlexibleToc from "remark-flexible-toc";
+import remarkWikiRefsPatched from './remark-wikirefs/remark-wikirefs';
+import * as wikirefs from "wikirefs";
+
 
 import remarkRehype from "remark-rehype";
 
@@ -30,41 +36,7 @@ import rehypeStringify from "rehype-stringify";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
-import { h } from "hastscript";
-import { visit } from "unist-util-visit";
-import type { Plugin, Settings } from "unified";
-import type { Directives } from "mdast-util-directive";
-
-import { Node } from "unist";
-
-export interface Page {
-  meta: PageMeta;
-  content: string;
-}
-
-export interface TocEntry {
-  value: string;
-  href: string;
-  debth: number;
-  numbering: number[];
-  parent: string;
-}
-
-export interface ParsedMarkdown {
-  content: string;
-  meta: Record<string, any>;
-}
-
-export interface PageMeta {
-  slug: string;
-  title: string;
-  description: string;
-  date: string;
-  tags: string[];
-  published: string;
-  readingTime: number;
-  toc: TocEntry[];
-}
+import type { ParsedMarkdown, Page, PageMeta } from "../types";
 
 // Directive Options
 type DirectiveOptions = {
@@ -78,20 +50,23 @@ type DirectiveOptions = {
 const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions = {}) => {
   return (tree) => {
     visit(tree, ["textDirective", "leafDirective", "containerDirective"], (node: any) => {
-      //console.log("generic directive: node.type", node.type);
+      // console.log("generic directive: node.type", node.type);
       if (node.type === "containerDirective" || node.type === "leafDirective" || node.type === "textDirective") {
         const directive = node as Directives;
         //console.log("genericDirective: ", directive);
         const name = directive.name;
         if (!name) return;
-        
+
         const data = node.data || (node.data = {});
         const tagName = node.type === "textDirective" ? "span" : "div";
 
         data.hName = tagName;
         data.hProperties = h(tagName, node.attributes || {}).properties;
         if (name === "note" && node.type === "containerDirective") {
-          data.hProperties = { className:["p-4", "gap-3", "text-sm", "bg-primary-50", "dark:bg-gray-800", "text-primary-800", "dark:text-primary-400", "rounded-lg"], role: ["alert"]}
+          data.hProperties = {
+            className: ["p-4", "gap-3", "text-sm", "bg-primary-50", "dark:bg-gray-800", "text-primary-800", "dark:text-primary-400", "rounded-lg"],
+            role: ["alert"],
+          };
         }
         if (name === "rdfterm" && node.type === "textDirective") {
           if (directive.children.length == 2) {
@@ -103,7 +78,7 @@ const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions
               },
             ];
             node.children = children;
-            node.type = "emphasis"
+            node.type = "emphasis";
             data.hProperties = { className: ["mr-1", "px-2", "py-1", "bg-gray-200", "rounded-lg"] };
           }
         } else {
@@ -121,16 +96,47 @@ const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions
   };
 };
 
-export async function parseMarkdown(content: string, filename: string) {
-  if (!filename) console.error("parseMarkdown: No Filename");
-  if (!isMarkdownFile(filename)) {
-    return;
-  }
+let wikiRefOpts = {
+  resolveDocType: (fname: string) => {
+    console.log("resolveDocType: ", fname);
+  },
+  resolveHtmlHref: (fname: string) => {
+    
+    console.log("resolveHtmlHref: ", fname);
+    const extname: string = wikirefs.isMedia(fname) ? path.extname(fname) : "";
+    fname = fname.replace(extname, "");
+    return (
+      "/" +
+      fname
+        .trim()
+        .toLowerCase()
+        .replace(/ /g, "-")
+        .replace(/[^\w-]+/g, "") +
+      extname
+    );
+  },
+  resolveHtmlText: (fname: string) => {
+    console.log("resolveHtmlText: ", fname)
+    fname.replace(/-/g, " ")
+  },
+  // requires mdast version -- resolves to node, not a string
+  resolveEmbedContent: (fname: string) => {
+    console.log("resolveEmbedContent: ", fname);
+    return {
+      type: "text",
+      value: fname + " embed content",
+    };
+  },
+  baseUrl: "/docs/user",
+};
+
+export async function parseMarkdown(content: string) {
   const processor = unified()
     .use(remarkParse)
     //.use(html_parser)
     .use(remarkFrontmatter, ["yaml"])
     .use(remarkExtractFrontmatter, { yaml: yaml.parse })
+    .use(remarkWikiRefsPatched, {baseUrl: "/docs/"})
     .use(sectionize)
     .use(remarkDirective)
     .use(genericDirective)
@@ -138,20 +144,18 @@ export async function parseMarkdown(content: string, filename: string) {
     .use(remarkGfm)
     .use(remarkFlexibleToc)
     .use(remarkRehype, { allowDangerousHtml: true, allowDangerousCharacters: true, handlers: { ...defListHastHandlers } })
+    .use(remarkRehype)
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings, { behavior: "wrap" })
     .use(rehypeStringify, { allowDangerousHtml: true });
 
-  const processed = await processor.process(content).catch((err) => {
-    console.error("Error generating docs:", err);
-    process.exit(1);
-  });
-
-  return {
-    code: String(processed),
-    data: processed.data as Record<string, unknown>,
-    map: "",
-  };
+  const processed = await processor.processSync(content);
+  // const processed = await processor.process(content).catch((err) => {
+  //   console.error("Error generating docs:", err);
+  //   //process.exit(1);
+  // });
+  //console.log("Processed Markdown: ", processed);
+  return { code: String(processed.value), data: processed.data };
 }
 
 export async function getFrontmatter(filePath: string): Promise<Page> {

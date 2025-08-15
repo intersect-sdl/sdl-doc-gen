@@ -6,5 +6,5 @@ if (typeof window !== "undefined") {
   window.global = globalThis;
 }
 
-export { getSiteToc, getPageBySlug, getEntries } from './content/loadContent'
-export { doc_gen } from "./index";
+export * from "./content/loadContent";
+export * from "./index";
