@@ -15,7 +15,7 @@ export * from "./config/config";
 export * from "./types";
 
 import { parseMarkdown } from "./parser/markdown";
-import type { DocGenOptions } from './types';
+import type { DocGenOptions, Preprocessor } from './types';
 import { getConfig, configurePaths } from './config/config';
 
 const defaults: DocGenOptions = {
@@ -45,14 +45,23 @@ export const doc_gen = (options: DocGenOptions = defaults): Preprocessor => {
 
   return {
 		name: '@sdl/doc-gen',
-		markup: async ({ content, filename }) => {
+		markup: async ({ content, filename }: { content: string; filename: string }) => {
       //console.log("doc-gen:markup: ", filename)
-      const parsed = parseMarkdown(content, filename);
-      return {
-        code: parsed.contents as string,
-        data: parsed.data as Record<string, unknown>,
-        map: "",
-      };
+      try {
+        const parsed = await parseMarkdown(content);
+        return {
+          code: parsed.code as string,
+          data: parsed.data as Record<string, unknown>,
+          map: "",
+        };
+      } catch (error) {
+        console.error(`Doc-gen processing failed for ${filename}:`, error);
+        return {
+          code: content, // Return original content on error
+          data: {},
+          map: "",
+        };
+      }
     }
   }
 };

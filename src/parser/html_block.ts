@@ -1,4 +1,4 @@
-import type { Eat } from "remark-parse";
+// import type { Eat } from "remark-parse"; // Deprecated import
 import type { Node } from "unist";
 
 import { openCloseTag } from "./re_tag";

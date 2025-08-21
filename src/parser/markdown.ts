@@ -28,6 +28,7 @@ import remarkGfm from "remark-gfm";
 import remarkFlexibleToc from "remark-flexible-toc";
 import remarkWikiRefsPatched from './remark-wikirefs/remark-wikirefs';
 import * as wikirefs from "wikirefs";
+// import { bpmnDirective } from './bpmn-directive.js';  // Temporarily disabled for integration testing
 
 
 import remarkRehype from "remark-rehype";
@@ -70,16 +71,21 @@ const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions
         }
         if (name === "rdfterm" && node.type === "textDirective") {
           if (directive.children.length == 2) {
-            const children = [
-              {
-                type: "text",
-                value: directive.children[0].value + ":" + directive.children[1].name,
-                position: { start: directive.children[0].position, end: directive.children[1].position },
-              },
-            ];
-            node.children = children;
-            node.type = "emphasis";
-            data.hProperties = { className: ["mr-1", "px-2", "py-1", "bg-gray-200", "rounded-lg"] };
+            const firstChild = directive.children[0] as any;
+            const secondChild = directive.children[1] as any;
+            
+            if (firstChild?.value && secondChild?.name) {
+              const children = [
+                {
+                  type: "text",
+                  value: firstChild.value + ":" + secondChild.name,
+                  position: { start: firstChild.position, end: secondChild.position },
+                },
+              ];
+              node.children = children;
+              node.type = "emphasis";
+              data.hProperties = { className: ["mr-1", "px-2", "py-1", "bg-gray-200", "rounded-lg"] };
+            }
           }
         } else {
           node.type = "mdxJsxFlowElement";
@@ -139,6 +145,11 @@ export async function parseMarkdown(content: string) {
     .use(remarkWikiRefsPatched, {baseUrl: "/docs/"})
     .use(sectionize)
     .use(remarkDirective)
+    // .use(bpmnDirective, {  // Temporarily disabled for integration testing
+    //   baseDir: process.cwd(),
+    //   errorFallback: true,
+    //   enableCache: true
+    // })
     .use(genericDirective)
     .use(remarkDefinitionList)
     .use(remarkGfm)
@@ -149,7 +160,7 @@ export async function parseMarkdown(content: string) {
     .use(rehypeAutolinkHeadings, { behavior: "wrap" })
     .use(rehypeStringify, { allowDangerousHtml: true });
 
-  const processed = await processor.processSync(content);
+  const processed = processor.processSync(content);
   // const processed = await processor.process(content).catch((err) => {
   //   console.error("Error generating docs:", err);
   //   //process.exit(1);

@@ -3,49 +3,53 @@ import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import sucrase from "@rollup/plugin-sucrase";
 import dts from "rollup-plugin-dts";
-import { readFileSync } from "fs";
-import { resolve } from "path";
 
 export default [
   {
     plugins: [
       node({ 
         preferBuiltins: true,
-        exportConditions: ['node'], // Add Node.js specific exports
       }), 
       commonjs({
-        // Include Node.js builtins
         ignoreDynamicRequires: true,
-        transformMixedEsModules: true,
       }), 
       json(), 
       sucrase({ transforms: ["typescript"] })
     ],
     input: "src/main.ts",
-    external: ["svelte/compiler"],
+    external: (id) => {
+      // Don't externalize relative imports (local modules)
+      if (id.startsWith('./') || id.startsWith('../')) {
+        return false;
+      }
+      
+      // Externalize Node.js builtins
+      if (['fs', 'path', 'node:fs', 'node:path', 'node:fs/promises', 'node:url', 'node:crypto'].includes(id)) {
+        return true;
+      }
+      
+      // Externalize specific large dependencies
+      if (['unified', 'remark', 'rehype', 'vfile', 'yaml', 'hastscript', 'unist-util-visit'].includes(id)) {
+        return true;
+      }
+      
+      // Externalize CSS/PostCSS related packages
+      if (id.includes('@csstools') || id.includes('lightningcss') || id.includes('postcss') || id.includes('css-') || id === 'rrweb-cssom') {
+        return true;
+      }
+      
+      // Externalize remark/rehype ecosystem
+      if (id.startsWith('remark-') || id.startsWith('rehype-') || id.startsWith('mdast-') || 
+          id.startsWith('hast-') || id.startsWith('unist-') || id.includes('micromark') || id === 'wikirefs') {
+        return true;
+      }
+      
+      return false;
+    },
     output: {
       file: "./dist/main.js",
       format: "es",
       sourcemap: true,
-      // Add Node.js globals
-      intro: `
-        if (!globalThis.__filename) {
-          import('module').then(module => {
-            const { createRequire } = module;
-            import('url').then(url => {
-              const { fileURLToPath } = url;
-              import('path').then(path => {
-                const require = createRequire(import.meta.url);
-                const __filename = fileURLToPath(import.meta.url);
-                const __dirname = path.dirname(__filename);
-                globalThis.__filename = __filename;
-                globalThis.__dirname = __dirname;
-                globalThis.require = require;
-              });
-            });
-          });
-        }
-      `,
     },
   },
   {

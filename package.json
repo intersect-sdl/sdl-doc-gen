@@ -24,6 +24,7 @@
         "globals.d.ts"
     ],
     "dependencies": {
+        "@sdl/bpmn": "workspace:*",
         "@types/mdast": "^4.0.4",
         "@types/node": "^22.17.0",
         "@types/unist": "^3.0.3",
