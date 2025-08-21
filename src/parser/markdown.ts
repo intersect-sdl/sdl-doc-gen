@@ -181,9 +181,9 @@ export async function getFrontmatter(filePath: string): Promise<Page> {
   };
 }
 
-// Support `.md` and `.svx` extensions
+// Support `.md`, `.svx`, and `.mdx` extensions
 export function isMarkdownFile(filename: string): boolean {
-  return filename.endsWith(".md") || filename.endsWith(".svx");
+  return filename.endsWith(".md") || filename.endsWith(".svx") || filename.endsWith(".mdx");
 }
 
 export async function parseMarkdownWithFrontmatter(content: string): Promise<{ html: string; meta: Record<string, any> }> {

@@ -14,7 +14,7 @@ export * from "./rss/generateRSS";
 export * from "./config/config";
 export * from "./types";
 
-import { parseMarkdown } from "./parser/markdown";
+import { parseMarkdown, isMarkdownFile } from "./parser/markdown";
 import type { DocGenOptions, Preprocessor } from './types';
 import { getConfig, configurePaths } from './config/config';
 
@@ -47,6 +47,13 @@ export const doc_gen = (options: DocGenOptions = defaults): Preprocessor => {
 		name: '@sdl/doc-gen',
 		markup: async ({ content, filename }: { content: string; filename: string }) => {
       //console.log("doc-gen:markup: ", filename)
+      
+      // Only process markdown files (.md, .svx, .mdx)
+      if (!isMarkdownFile(filename)) {
+        // Return undefined to let other preprocessors handle this file
+        return undefined;
+      }
+      
       try {
         const parsed = await parseMarkdown(content);
         return {
