@@ -8,6 +8,7 @@
 import fs from "node:fs/promises";
 import path from "path";
 import { extractFrontmatter } from "./frontmatter";
+import { getConfig } from '../config/config.js';
 
 import yaml from "yaml";
 import { unified } from "unified";
@@ -28,7 +29,7 @@ import remarkGfm from "remark-gfm";
 import remarkFlexibleToc from "remark-flexible-toc";
 import remarkWikiRefsPatched from './remark-wikirefs/remark-wikirefs';
 import * as wikirefs from "wikirefs";
-// import { bpmnDirective } from './bpmn-directive.js';  // Temporarily disabled for integration testing
+import { bpmnDirective } from './bpmn-directive.js';
 
 
 import remarkRehype from "remark-rehype";
@@ -51,10 +52,10 @@ type DirectiveOptions = {
 const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions = {}) => {
   return (tree) => {
     visit(tree, ["textDirective", "leafDirective", "containerDirective"], (node: any) => {
-      // console.log("generic directive: node.type", node.type);
+      // //console.log("generic directive: node.type", node.type);
       if (node.type === "containerDirective" || node.type === "leafDirective" || node.type === "textDirective") {
         const directive = node as Directives;
-        //console.log("genericDirective: ", directive);
+        ////console.log("genericDirective: ", directive);
         const name = directive.name;
         if (!name) return;
 
@@ -104,11 +105,11 @@ const genericDirective: Plugin<[DirectiveOptions?]> = (options: DirectiveOptions
 
 let wikiRefOpts = {
     resolveDocType: (fname: string) => {
-    console.log("resolveDocType: ", fname);
+    //console.log("resolveDocType: ", fname);
   },
   resolveHtmlHref: (fname: string) => {
     
-    console.log("resolveHtmlHref: ", fname);
+    //console.log("resolveHtmlHref: ", fname);
     const extname: string = wikirefs.isMedia(fname) ? path.extname(fname) : "";
     fname = fname.replace(extname, "");
     return (
@@ -122,12 +123,12 @@ let wikiRefOpts = {
     );
   },
   resolveHtmlText: (fname: string) => {
-    console.log("resolveHtmlText: ", fname)
+    //console.log("resolveHtmlText: ", fname)
     fname.replace(/-/g, " ")
   },
   // requires mdast version -- resolves to node, not a string
   resolveEmbedContent: (fname: string) => {
-    console.log("resolveEmbedContent: ", fname);
+    //console.log("resolveEmbedContent: ", fname);
     return {
       type: "text",
       value: fname + " embed content",
@@ -136,7 +137,10 @@ let wikiRefOpts = {
   baseUrl: "/docs/user",
 };
 
-export async function parseMarkdown(content: string) {
+export async function parseMarkdown(content: string, options?: { baseDir?: string }) {
+  // Use the configured base path from environment, options, or hardcoded fallback
+  const configuredBasePath = options?.baseDir || process.env.PROJECT_ROOT || '/Users/x8q/Projects/INTERSECT/ACL/';
+  
   const processor = unified()
     .use(remarkParse)
     //.use(html_parser)
@@ -145,27 +149,31 @@ export async function parseMarkdown(content: string) {
     .use(remarkWikiRefsPatched, {baseUrl: "/docs/"})
     .use(sectionize)
     .use(remarkDirective)
-    // .use(bpmnDirective, {  // Temporarily disabled for integration testing
-    //   baseDir: process.cwd(),
-    //   errorFallback: true,
-    //   enableCache: true
-    // })
+    .use(bpmnDirective, {  // Use configured base path for BPMN files
+      baseDir: configuredBasePath,
+      errorFallback: true,
+      enableCache: true
+    })
     .use(genericDirective)
     .use(remarkDefinitionList)
     .use(remarkGfm)
     .use(remarkFlexibleToc)
     .use(remarkRehype, { allowDangerousHtml: true, allowDangerousCharacters: true, handlers: { ...defListHastHandlers } })
-    .use(remarkRehype)
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings, { behavior: "wrap" })
     .use(rehypeStringify, { allowDangerousHtml: true });
 
-  const processed = processor.processSync(content);
-  // const processed = await processor.process(content).catch((err) => {
-  //   console.error("Error generating docs:", err);
-  //   //process.exit(1);
-  // });
-  //console.log("Processed Markdown: ", processed);
+  //const processed = processor.processSync(content);
+  const processed = await processor
+    .process(content)
+    .then((result) => {
+      return result;
+    })
+    .catch((err) => {
+      console.error("Error generating docs:", err);
+      throw err; // Re-throw to handle properly
+    });
+  
   return { code: String(processed.value), data: processed.data };
 }
 

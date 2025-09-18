@@ -46,7 +46,7 @@ export const doc_gen = (options: DocGenOptions = defaults): Preprocessor => {
   return {
 		name: '@sdl/doc-gen',
 		markup: async ({ content, filename }: { content: string; filename: string }) => {
-      //console.log("doc-gen:markup: ", filename)
+      ////console.log("doc-gen:markup: ", filename)
       
       // Only process markdown files (.md, .svx, .mdx)
       if (!isMarkdownFile(filename)) {

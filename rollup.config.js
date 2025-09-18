@@ -12,6 +12,8 @@ export default [
       }), 
       commonjs({
         ignoreDynamicRequires: true,
+        transformMixedEsModules: true,
+        ignore: ['@asamuzakjp/css-color', 'rrweb-cssom', '@csstools/*']
       }), 
       json(), 
       sucrase({ transforms: ["typescript"] })
@@ -23,28 +25,33 @@ export default [
         return false;
       }
       
+      // Don't externalize the entry point or main source files
+      if (id.includes('src/main.ts') || id.includes('/src/')) {
+        return false;
+      }
+      
       // Externalize Node.js builtins
       if (['fs', 'path', 'node:fs', 'node:path', 'node:fs/promises', 'node:url', 'node:crypto'].includes(id)) {
         return true;
       }
       
-      // Externalize specific large dependencies
-      if (['unified', 'remark', 'rehype', 'vfile', 'yaml', 'hastscript', 'unist-util-visit'].includes(id)) {
-        return true;
+      // Externalize EVERYTHING except known safe bundling candidates
+      // Only bundle very specific modules that we know are safe
+      const safeToBundles = [
+        'front-matter', 
+        'fast-glob',
+        '@types/mdast',
+        '@types/unist', 
+        '@types/node'
+      ];
+      
+      // If it's in our safe list, don't externalize it
+      if (safeToBundles.some(safe => id === safe || id.startsWith(safe + '/'))) {
+        return false;
       }
       
-      // Externalize CSS/PostCSS related packages
-      if (id.includes('@csstools') || id.includes('lightningcss') || id.includes('postcss') || id.includes('css-') || id === 'rrweb-cssom') {
-        return true;
-      }
-      
-      // Externalize remark/rehype ecosystem
-      if (id.startsWith('remark-') || id.startsWith('rehype-') || id.startsWith('mdast-') || 
-          id.startsWith('hast-') || id.startsWith('unist-') || id.includes('micromark') || id === 'wikirefs') {
-        return true;
-      }
-      
-      return false;
+      // Externalize everything else that's not a relative import
+      return true;
     },
     output: {
       file: "./dist/main.js",

@@ -9,7 +9,7 @@ function remarkWikirefs(this: any, opts = {}) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = /** @type {Processor<Root>} */ this;
     const data = self.data();
-    //console.log("remarkWikiRefsPatched: self: ", self);
+    ////console.log("remarkWikiRefsPatched: self: ", self);
 
     if (
       !warningIssued &&
@@ -19,7 +19,7 @@ function remarkWikirefs(this: any, opts = {}) {
       console.warn("[remark-wiki-link] Warning: please upgrade to remark 13 to use this plugin");
     }
 
-    //console.log("remarkWikiRefsPatched: data: ", data);
+    ////console.log("remarkWikiRefsPatched: data: ", data);
 
     //add("micromarkExtensions", syntaxWikiLinks(opts));
     //add("fromMarkdownExtensions", fromMarkdownWikiLinks(opts));
@@ -34,10 +34,10 @@ function remarkWikirefs(this: any, opts = {}) {
     // const toMarkdownExtensions = data.toMarkdownExtensions || (data.toMarkdownExtensions = []);
     // toMarkdownExtensions.push(toMarkdownWikiLinks(opts));
 
-    // console.log("remarkWikiRefsPatched: data: ", data);
-    // console.log("remarkWikiRefsPatched: data.micromarkExtensions: ", data.micromarkExtensions);
-    // console.log("remarkWikiRefsPatched: data.fromMarkdownExtensions: ", data.fromMarkdownExtensions);
-    // console.log("remarkWikiRefsPatched: data.toMarkdownExtensions: ", data.toMarkdownExtensions);
+    // //console.log("remarkWikiRefsPatched: data: ", data);
+    // //console.log("remarkWikiRefsPatched: data.micromarkExtensions: ", data.micromarkExtensions);
+    // //console.log("remarkWikiRefsPatched: data.fromMarkdownExtensions: ", data.fromMarkdownExtensions);
+    // //console.log("remarkWikiRefsPatched: data.toMarkdownExtensions: ", data.toMarkdownExtensions);
 }
 
 export { remarkWikirefs };

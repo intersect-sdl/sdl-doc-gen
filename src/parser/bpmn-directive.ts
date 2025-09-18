@@ -1,18 +1,23 @@
 /**
- * BPMN directive plugin for unified/remark processing
+ * BPMN directive plugin for unified/remark processing with async support
  * 
  * This plugin handles the :::bpmn{src="./file.bpmn"} directive syntax,
- * loads BPMN files, generates static SVG with ORNL theming, and creates
- * appropriate HTML output for documentation sites.
+ * loads BPMN files asynchronously, generates static SVG with ORNL theming, 
+ * and creates appropriate HTML output for documentation sites.
+ * 
+ * With the migration to async markdown processing, BPMN directives are now
+ * processed directly during plugin execution rather than using placeholders.
  * 
  * @module parser/bpmn-directive
- * @version 0.1.0
+ * @version 0.2.0
  */
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { h } from 'hastscript';
+import { h, s } from 'hastscript';
+import { toHtml } from 'hast-util-to-html';
 import { visit } from 'unist-util-visit';
+import { fromHtml } from 'hast-util-from-html'
 import type { Plugin } from 'unified';
 import type { Root } from 'mdast';
 import type { ContainerDirective, LeafDirective, TextDirective } from 'mdast-util-directive';
@@ -25,7 +30,8 @@ import {
   ORNL_COLORS,
   generateOrnlBpmnStyles,
   type SvgGenerationOptions,
-  type BpmnThemeOptions
+  type BpmnThemeOptions,
+  SvgGenerationResult
 } from '@sdl/bpmn';
 
 /**
@@ -69,7 +75,8 @@ const DEFAULT_OPTIONS: Required<BpmnDirectiveOptions> = {
     width: 800,
     height: 600,
     fitViewport: true,
-    includeTheme: true
+    includeTheme: true,
+    zoom: 1.0
   },
   errorFallback: true,
   enableCache: true,
@@ -92,11 +99,14 @@ const bpmnCache = new Map<string, {
 const CACHE_TTL = 5 * 60 * 1000;
 
 /**
- * Remark plugin for processing BPMN directives
+ * Remark plugin for processing BPMN directives with async support
  * 
  * Handles directive syntax like:
  * - :::bpmn{src="./workflow.bpmn"}
  * - :::bpmn{src="../process.bpmn2" width="1000" height="800"}
+ * 
+ * Now properly supports async processing since the markdown pipeline is async.
+ * Creates placeholders during parsing and processes them async during HTML generation.
  * 
  * @param options - Plugin configuration options
  * @returns Unified plugin function
@@ -120,7 +130,16 @@ const CACHE_TTL = 5 * 60 * 1000;
 export const bpmnDirective: Plugin<[BpmnDirectiveOptions?], Root> = (options = {}) => {
   const config = { ...DEFAULT_OPTIONS, ...options };
   
-  return (tree, file) => {
+  return async (tree, file) => {
+    // Collect all BPMN directive nodes for async processing
+    const bpmnNodes: Array<{
+      node: any;
+      index: number;
+      parent: any;
+      attributes: Record<string, string>;
+      src: string;
+    }> = [];
+    
     // Visit all directive nodes in the markdown AST
     visit(tree, (node: any) => {
       return (node.type === 'containerDirective' || node.type === 'leafDirective') && 
@@ -146,25 +165,32 @@ export const bpmnDirective: Plugin<[BpmnDirectiveOptions?], Root> = (options = {
         return;
       }
       
-      try {
-        // Process BPMN file synchronously (limitation of unified plugins)
-        processBpmnFileSync(src, attributes, config, node, index, parent);
-      } catch (error) {
-        const err = error as Error;
-        replaceWithError(
-          node,
-          index,
-          parent,
-          `Failed to process BPMN file "${src}": ${err.message}`,
-          config
-        );
-      }
+      // Collect for async processing
+      bpmnNodes.push({ node, index, parent, attributes, src });
     });
+    
+    // Process all BPMN nodes asynchronously
+    await Promise.all(
+      bpmnNodes.map(async ({ node, index, parent, attributes, src }) => {
+        try {
+          await processBpmnFileAsync(src, attributes, config, node, index, parent);
+        } catch (error) {
+          const err = error as Error;
+          replaceWithError(
+            node,
+            index,
+            parent,
+            `Failed to process BPMN file "${src}": ${err.message}`,
+            config
+          );
+        }
+      })
+    );
   };
 };
 
 /**
- * Process BPMN file synchronously (simplified version for plugin compatibility)
+ * Process BPMN file asynchronously and replace directive node with SVG
  * 
  * @param src - Source file path
  * @param attributes - Directive attributes  
@@ -175,32 +201,37 @@ export const bpmnDirective: Plugin<[BpmnDirectiveOptions?], Root> = (options = {
  * 
  * @internal
  */
-function processBpmnFileSync(
+async function processBpmnFileAsync(
   src: string,
   attributes: Record<string, string>,
   config: Required<BpmnDirectiveOptions>,
   node: any,
   index: number,
   parent: any
-): void {
+): Promise<void> {
+  // Resolve file path
+  const filePath = path.isAbsolute(src) 
+    ? src 
+    : path.resolve(config.baseDir, src);
+
   try {
-    // Resolve file path
-    const filePath = path.isAbsolute(src) 
-      ? src 
-      : path.resolve(config.baseDir, src);
-    
-    // For now, create a placeholder that will be processed at build time
-    // This allows the plugin to work with the unified pipeline
-    const placeholderElement = createBpmnPlaceholder(src, attributes, config);
-    
-    // Replace the directive node with placeholder HTML
-    replaceWithHtml(node, index, parent, placeholderElement);
+    // Generate SVG using the existing async processBpmnFile function
+    const svgResult = await processBpmnFile(filePath, attributes, config);
+
+    // Create final HTML element
+    const htmlElement = createBpmnHtml(svgResult.svg, attributes, config);
+
+    // Replace the directive node with generated SVG HTML
+    replaceWithHtml(node, index, parent, htmlElement);
     
   } catch (error) {
     const err = error as Error;
+    console.error(`Error processing BPMN file "${filePath}":`, err);
     throw new Error(`BPMN processing failed: ${err.message}`);
   }
 }
+
+
 
 /**
  * Process BPMN file and generate SVG with caching
@@ -248,9 +279,9 @@ async function processBpmnFile(
   const svgOptions: SvgGenerationOptions = {
     ...config.svgOptions,
     theme: config.theme,
-    width: parseInt(attributes.width || config.svgOptions.width!.toString()),
-    height: parseInt(attributes.height || config.svgOptions.height!.toString()),
-    zoom: parseFloat(attributes.zoom || config.svgOptions.zoom!.toString())
+    width: parseInt(attributes.width || String(config.svgOptions.width || 800)),
+    height: parseInt(attributes.height || String(config.svgOptions.height || 600)),
+    zoom: parseFloat(attributes.zoom || String(config.svgOptions.zoom || 1.0))
   };
   
   // Generate SVG
@@ -269,72 +300,29 @@ async function processBpmnFile(
 }
 
 /**
- * Create BPMN placeholder element for build-time processing
- * 
- * @param src - Source file path
- * @param attributes - Directive attributes
- * @param config - Plugin configuration
- * @returns HTML element placeholder
- * 
- * @internal
+ * Simple SVG parser to convert SVG string to HAST structure
+ * This is a minimal parser for our specific SVG use case
  */
-function createBpmnPlaceholder(
-  src: string,
-  attributes: Record<string, string>,
-  config: Required<BpmnDirectiveOptions>
-): any {
-  
-  // Build CSS classes
-  const cssClasses = [
-    ...config.cssClasses,
-    'bpmn-placeholder',
-    ...(attributes.class ? attributes.class.split(' ') : [])
-  ];
-  
-  // Create container properties with data attributes for build-time processing
-  const containerProps: Record<string, any> = {
-    className: cssClasses.join(' '),
-    'data-bpmn-src': src,
-    'data-bpmn-directive': 'true',
-    'data-bpmn-width': attributes.width || config.svgOptions.width?.toString(),
-    'data-bpmn-height': attributes.height || config.svgOptions.height?.toString(),
-    'data-bpmn-zoom': attributes.zoom || config.svgOptions.zoom?.toString()
-  };
-  
-  // Add custom dimensions if specified
-  if (attributes.width || attributes.height) {
-    containerProps.style = {
-      width: attributes.width ? `${attributes.width}px` : undefined,
-      height: attributes.height ? `${attributes.height}px` : undefined,
-      minHeight: '200px',
-      border: `1px dashed ${ORNL_COLORS.NEUTRAL}`,
-      borderRadius: '0.5rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#f8f9fa'
-    };
+function parseSvgToHast(svgString: string): any {
+  // Basic regex to extract SVG tag and content
+  const svgMatch = svgString.match(/<svg([^>]*)>(.*)<\/svg>/s);
+  if (!svgMatch) {
+    return h('div', { className: 'bpmn-error' }, 'Invalid SVG content');
   }
+
+  const [, attributes, content] = svgMatch;
   
-  return h('div', containerProps, [
-    h('div', { className: 'bpmn-placeholder-content' }, [
-      h('p', { 
-        style: { 
-          margin: '0', 
-          color: ORNL_COLORS.TEXT_PRIMARY,
-          fontFamily: 'Inter, system-ui, sans-serif'
-        } 
-      }, `📊 BPMN Diagram: ${path.basename(src)}`),
-      h('p', { 
-        style: { 
-          margin: '0.5rem 0 0 0', 
-          fontSize: '0.875rem', 
-          color: ORNL_COLORS.SECONDARY,
-          fontFamily: 'Inter, system-ui, sans-serif'
-        } 
-      }, 'Will be rendered during build process')
-    ])
-  ]);
+  // Parse attributes
+  const attrs: Record<string, string> = {};
+  const attrRegex = /(\w+)="([^"]*)"/g;
+  let attrMatch;
+  while ((attrMatch = attrRegex.exec(attributes)) !== null) {
+    attrs[attrMatch[1]] = attrMatch[2];
+  }
+
+  // For now, return the SVG as raw content within the element
+  // This is a simple approach that should work with hastscript
+  return h('svg', attrs, { type: 'raw', value: content });
 }
 
 /**
@@ -375,24 +363,22 @@ function createBpmnHtml(
       height: attributes.height ? `${attributes.height}px` : undefined
     };
   }
-  
+
   return h('div', containerProps, [
     // Embedded styles for ORNL theming
     h('style', { 'data-ornl-bpmn-styles': 'true' }, ornlStyles),
     
-    // SVG content (raw HTML)
-    h('div', { 
-      className: 'bpmn-svg-container',
-      innerHTML: svg 
-    })
+    // SVG content wrapper - parse SVG string to HAST
+    fromHtml(svg.trim())
   ]);
 }
 
 /**
- * Build-time processor for converting BPMN placeholders to actual SVGs
+ * Legacy build-time processor for converting BPMN placeholders to actual SVGs
  * 
- * This function should be called during the build process to replace
- * BPMN placeholders with actual rendered SVG content.
+ * Note: This function is now optional since BPMN processing happens directly
+ * during the async plugin execution. It's kept for backward compatibility
+ * and for cases where you might want post-processing of HTML content.
  * 
  * @param htmlContent - HTML content containing BPMN placeholders
  * @param baseDir - Base directory for resolving BPMN file paths
@@ -433,9 +419,9 @@ export async function processBpmnPlaceholders(
       const src = srcMatch[1];
       const attributes = {
         src,
-        width: widthMatch?.[1] || config.svgOptions.width!.toString(),
-        height: heightMatch?.[1] || config.svgOptions.height!.toString(),
-        zoom: zoomMatch?.[1] || config.svgOptions.zoom!.toString()
+        width: widthMatch?.[1] || String(config.svgOptions.width || 800),
+        height: heightMatch?.[1] || String(config.svgOptions.height || 600),
+        zoom: zoomMatch?.[1] || String(config.svgOptions.zoom || 1.0)
       };
       
       // Resolve file path
@@ -481,20 +467,23 @@ function createErrorHtml(
   errorMessage: string,
   config: Required<BpmnDirectiveOptions>
 ): string {
-  return `
-<div class="bpmn-error ornl-theme" style="
-  border: 2px solid ${ORNL_COLORS.SECONDARY};
-  border-radius: 0.5rem;
-  padding: 1rem;
-  background-color: rgba(254, 80, 0, 0.1);
-  color: ${ORNL_COLORS.TEXT_PRIMARY};
-  font-family: Inter, system-ui, sans-serif;
-">
-  <div class="error-icon" style="font-size: 1.25rem; margin-bottom: 0.5rem;">⚠️</div>
-  <p class="error-message" style="margin: 0; font-weight: bold;">Failed to load BPMN diagram</p>
-  <p class="error-details" style="margin: 0.5rem 0 0 0; font-size: 0.875rem;">${errorMessage}</p>
-</div>
-  `.trim();
+  const errorElement = h('div', {
+    className: 'bpmn-error ornl-theme',
+    style: {
+      border: `2px solid ${ORNL_COLORS.SECONDARY}`,
+      borderRadius: '0.5rem',
+      padding: '1rem',
+      backgroundColor: 'rgba(254, 80, 0, 0.1)',
+      color: ORNL_COLORS.TEXT_PRIMARY,
+      fontFamily: 'Inter, system-ui, sans-serif'
+    }
+  }, [
+    h('div', { className: 'error-icon', style: { fontSize: '1.25rem', marginBottom: '0.5rem' } }, '⚠️'),
+    h('p', { className: 'error-message', style: { margin: '0', fontWeight: 'bold' } }, 'BPMN processing failed'),
+    h('p', { className: 'error-details', style: { margin: '0.5rem 0 0 0', fontSize: '0.875rem' } }, errorMessage)
+  ]);
+  
+  return toHtml(errorElement);
 }
 
 /**
@@ -532,7 +521,7 @@ function replaceWithError(
     }
   }, [
     h('div', { className: 'error-icon', style: { fontSize: '1.25rem', marginBottom: '0.5rem' } }, '⚠️'),
-    h('p', { className: 'error-message', style: { margin: '0', fontWeight: 'bold' } }, 'Failed to load BPMN diagram'),
+    h('p', { className: 'error-message', style: { margin: '0', fontWeight: 'bold' } }, 'BPMN processing failed'),
     h('p', { className: 'error-details', style: { margin: '0.5rem 0 0 0', fontSize: '0.875rem' } }, errorMessage)
   ]);
   
@@ -556,10 +545,10 @@ function replaceWithHtml(
   htmlElement: any
 ): void {
   
-  // Create a new HTML node
+  // Create a new HTML node with properly serialized content
   const htmlNode = {
     type: 'html',
-    value: htmlElement.outerHTML || htmlElement.toString(),
+    value: toHtml(htmlElement),
     position: node.position
   };
   

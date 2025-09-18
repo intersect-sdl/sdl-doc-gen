@@ -58,7 +58,7 @@ function exitWikilink(this: CompileContext, token: Token) {
       value: node.name,
     },
   ];
-  console.log("exitWikilink:\n\ttoken: ", token, "\n\tnode: ", node);
+  //console.log("exitWikilink:\n\ttoken: ", token, "\n\tnode: ", node);
   this.exit(token);
 }
 
@@ -69,7 +69,7 @@ function exitName(token: Token): void {
   }
   const name = this.sliceSerialize(token);
   node.name = name;
-  console.log("exitName: token: ", token, "name: ", name);
+  //console.log("exitName: token: ", token, "name: ", name);
 }
 
 /**
@@ -97,7 +97,7 @@ function enter(this: CompileContext, token: Token, type: WikiRef["type"]) {
 }
 
 function exitLinkTypeTxt(this: CompileContext, token: Token): void {
-  console.log("exitLinkTypeTxt: token: ", token);
+  //console.log("exitLinkTypeTxt: token: ", token);
 }
 
 function exitFileNameTxt(this: CompileContext, token: Token): void {
@@ -105,11 +105,11 @@ function exitFileNameTxt(this: CompileContext, token: Token): void {
   const filename: string = this.sliceSerialize(token);
   node.name = filename;
   node.data.item.filename = filename;
-  console.log("exitFileNameTxt: token: ", token, "\nnode: ", node);
+  //console.log("exitFileNameTxt: token: ", token, "\nnode: ", node);
 }
 
 function exitLabelTxt(this: CompileContext, token: Token): void {
-  console.log("exitLabelTxt: token: ", token);
+  //console.log("exitLabelTxt: token: ", token);
 }
 
 function enterWikiLink(this: CompileContext, token: Token) {

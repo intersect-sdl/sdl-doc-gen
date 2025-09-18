@@ -110,4 +110,5 @@ export interface PageMeta {
   published: string;
   readingTime: number;
   toc: TocEntry[];
+  uuid?: string; // Added UUID property
 }

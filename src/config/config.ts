@@ -70,14 +70,14 @@ export class DocGenConfig {
     for (const envVar of envVars) {
       const value = process.env[envVar];
       if (value && this.isValidPath(value)) {
-        console.log(`[doc-gen] Using base path from ${envVar}: ${value}`);
+        //console.log(`[doc-gen] Using base path from ${envVar}: ${value}`);
         return path.resolve(value);
       }
     }
 
     // 2. Fallback to current working directory
     const cwd = process.cwd();
-    console.log(`[doc-gen] Using current working directory as base path: ${cwd}`);
+    //console.log(`[doc-gen] Using current working directory as base path: ${cwd}`);
     return cwd;
   }
 
@@ -88,7 +88,7 @@ export class DocGenConfig {
     // Check if it's an environment variable reference
     if (process.env[pathOrEnvVar]) {
       const envPath = process.env[pathOrEnvVar];
-      console.log(`[doc-gen] Resolved path from env ${pathOrEnvVar}: ${envPath}`);
+      //console.log(`[doc-gen] Resolved path from env ${pathOrEnvVar}: ${envPath}`);
       return path.resolve(envPath);
     }
 
@@ -201,12 +201,12 @@ export class DocGenConfig {
    * Log current configuration (for debugging)
    */
   logConfig(): void {
-    console.log('[doc-gen] Current configuration:');
-    console.log('  Base Path:', this.config.basePath);
-    console.log('  Content Roots:', this.config.contentRoots);
-    console.log('  Resolved Content Roots:', this.getContentRoots());
-    console.log('  Slug Prefixes:', this.config.slugPrefixes);
-    console.log('  File Extensions:', this.config.fileExtensions);
+    //console.log('[doc-gen] Current configuration:');
+    //console.log('  Base Path:', this.config.basePath);
+    //console.log('  Content Roots:', this.config.contentRoots);
+    //console.log('  Resolved Content Roots:', this.getContentRoots());
+    //console.log('  Slug Prefixes:', this.config.slugPrefixes);
+    //console.log('  File Extensions:', this.config.fileExtensions);
   }
 }
 

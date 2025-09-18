@@ -26,7 +26,7 @@ export async function resolveUUIDLinks(contentDir: string, cachePath: string): P
         relativePath = "./" + relativePath;
       }
 
-      console.log(file, path.dirname(file), entry.filePath);
+      //console.log(file, path.dirname(file), entry.filePath);
       return `[${entry.title ?? "Link"}](${relativePath})`;
     });
 
