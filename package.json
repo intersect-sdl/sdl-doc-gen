@@ -17,10 +17,14 @@
     "types": "./dist/main.d.ts",
     "scripts": {
         "build": "rollup -c",
+        "postinstall": "pnpm run build",
         "test": "vitest --disable-console-intercept --silent=false"
     },
     "files": [
         "dist/*",
+        "src/**/*",
+        "rollup.config.js",
+        "tsconfig.json",
         "globals.d.ts"
     ],
     "dependencies": {
