@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/build-dist.yml'
       - 'src/**'
       - 'package.json'
       - 'rollup.config.js'
