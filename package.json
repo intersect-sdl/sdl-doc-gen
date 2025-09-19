@@ -1,7 +1,18 @@
 {
     "name": "@sdl/doc-gen",
     "version": "0.0.1",
+    "description": "Documentation generation tool for SDL projects",
     "type": "module",
+    "author": "Intersect SDL Team",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/intersect-sdl/sdl-doc-gen.git"
+    },
+    "bugs": {
+        "url": "https://github.com/intersect-sdl/sdl-doc-gen/issues"
+    },
+    "homepage": "https://github.com/intersect-sdl/sdl-doc-gen#readme",
     "exports": {
         ".": {
             "types": "./dist/main.d.ts",
