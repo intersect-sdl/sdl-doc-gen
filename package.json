@@ -28,7 +28,6 @@
     "types": "./dist/main.d.ts",
     "scripts": {
         "build": "rollup -c",
-        "postinstall": "pnpm build",
         "test": "vitest --disable-console-intercept --silent=false"
     },
     "files": [
